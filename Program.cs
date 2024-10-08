@@ -6,7 +6,6 @@ namespace CachingProxy
 {
     internal class Program
     {
-        private static MemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
 
         static async Task Main(string[] args)
         {
@@ -28,7 +27,8 @@ namespace CachingProxy
         private static async Task ListenOn(int port, string origin)
         {
             TcpListener listener = new TcpListener(port);
-
+            Console.WriteLine($"Listening on {port}");
+            
             listener.Start();
             while (true)
             {
@@ -37,64 +37,20 @@ namespace CachingProxy
                     if (!socket.Connected)
                         continue;
 
-                    var receivedBytes = new byte[1024];
 
-                    socket.Receive(receivedBytes);
+                    Requester req = new Requester(socket);
 
-                    string strContent = Encoding.Default.GetString(receivedBytes);
+                    var content = req.GetContent();
 
-                    SocketContent content = new SocketContent(strContent);
+                    Console.WriteLine($"Receiving request on address {content.Address}");
+                    Receiver rec = new Receiver(origin, content.Address);
 
-                    var response = GetFromCache(content.Address);
-                    bool fromCache = response != null;
-                    if (!fromCache)
-                    {
-                        response = await CallServer(origin, content.Address);
-                        AddToCache(content.Address, response);
-                    }
-                    await ReturnToRequester(response, content, socket, fromCache);
+                    var response = await rec.GetResponse();
+                    
+                    string header = await req.Send(response);
+                    Console.WriteLine(header);
                 }
             }
-        }
-
-        private static void AddToCache(string address, HttpResponseMessage response)
-        {
-            _cache.Set(address, response);
-        }
-
-        private static HttpResponseMessage GetFromCache(string address)
-        {
-            if(_cache.TryGetValue(address, out HttpResponseMessage? result))
-            return result;
-
-            return null;
-        }
-
-        private static Task<HttpResponseMessage> CallServer(string origin, string address)
-        {
-            HttpClient client = new HttpClient();
-
-            client.BaseAddress = new Uri(origin);
-
-            return client.GetAsync(address);
-        }
-
-        private static async Task ReturnToRequester(HttpResponseMessage response, SocketContent content, Socket socket, bool fromCache)
-        {
-            if (!socket.Connected)
-                return;
-
-            var data = await response.Content.ReadAsByteArrayAsync();
-
-            string header = $"{content.HttpVersion} 200 OK \r\n";
-            header += $"X-Cache: { (fromCache? "HIT" : "MISS") } \r\n";
-            header += $"Content-Type: { response.Content.Headers.ContentType.MediaType } \r\n";
-            header += $"Content-Length: {data.Count()} \r\n\r\n";
-
-            Console.WriteLine(header);
-            socket.Send(Encoding.Default.GetBytes(header));
-            socket.Send(data);
-
         }
     }
 

@@ -1,12 +1,12 @@
 ﻿namespace CachingProxy
 {
-    public record SocketContent
+    public record RequesterContent
     {
         public string Method { get; }
         public string Address { get; }
         public string HttpVersion { get; set; }
 
-        public SocketContent(string content)
+        public RequesterContent(string content)
         {
             string[] lineSplitContent = content.Split("\n");
 
