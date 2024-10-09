@@ -16,5 +16,11 @@
 
             Headers.Origin = ResponseOrigin.Cache;
         }
+
+        public Response(Headers? headers, byte[] data)
+        {
+            Headers = headers;
+            Data = data;
+        }
     }
 }

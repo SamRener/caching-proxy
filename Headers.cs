@@ -10,6 +10,10 @@ namespace CachingProxy
         public string ReasonPhrase { get; set; }
         public string ContentType { get; set; }
         public long ContentLength { get; set; }
+        public Headers()
+        {
+
+        }
         public Headers(HttpResponseMessage response, int dataLength, ResponseOrigin origin)
         {
             StatusCode = response.StatusCode;

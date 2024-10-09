@@ -13,10 +13,9 @@ namespace CachingProxy
                 {
                     case "--port": port = args[i + 1]; break;
                     case "--origin": origin = args[i + 1]; break;
+                    case "--memory-cache": Cache.ShouldUseMemoryCache(true); break;
+                    case "--clear-cache": Cache.ClearCache(); break;
                 }
-
-                if (port != null && origin != null)
-                    break;
             }
 
             await ListenOn(int.Parse(port), origin);
