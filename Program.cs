@@ -1,7 +1,4 @@
-﻿using System.Net;
-using System.Net.Sockets;
-using System.Text;
-using Microsoft.Extensions.Caching.Memory;
+﻿using System.Net.Sockets;
 namespace CachingProxy
 {
     internal class Program
@@ -21,6 +18,7 @@ namespace CachingProxy
                 if (port != null && origin != null)
                     break;
             }
+
             await ListenOn(int.Parse(port), origin);
         }
 
@@ -28,27 +26,44 @@ namespace CachingProxy
         {
             TcpListener listener = new TcpListener(port);
             Console.WriteLine($"Listening on {port}");
-            
+
             listener.Start();
+
+            Thread th = new Thread(new ThreadStart(() => StartListen(origin, listener)));
+            th.Start();
+
+            ;
+        }
+
+        private static void StartListen(string origin, TcpListener listener)
+        {
             while (true)
             {
-                using(var socket = listener.AcceptSocket())
+                using (var socket = listener.AcceptSocket())
                 {
                     if (!socket.Connected)
                         continue;
+                    try
+                    {
 
+                        Requester req = new Requester(socket);
 
-                    Requester req = new Requester(socket);
+                        var content = req.GetContent();
+                        if (content is null)
+                            continue;
 
-                    var content = req.GetContent();
+                        Console.WriteLine($"Receiving request on address {content.Address}");
+                        Receiver rec = new Receiver(origin, content.Address);
 
-                    Console.WriteLine($"Receiving request on address {content.Address}");
-                    Receiver rec = new Receiver(origin, content.Address);
+                        var response = rec.GetResponse().Result;
 
-                    var response = await rec.GetResponse();
-                    
-                    string header = await req.Send(response);
-                    Console.WriteLine(header);
+                        var header = req.Send(response).Result;
+                        Console.WriteLine(header);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(ex.Message);
+                    }
                 }
             }
         }

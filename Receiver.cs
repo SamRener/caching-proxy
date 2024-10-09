@@ -14,12 +14,32 @@
             var response = Cache.GetFromCache(Address);
 
             if (response != null)
-                return new Response(response, ResponseOrigin.Cache);
+            {
+                return new Response(response);
+            }
 
-            response = await CallServer();
+            int attempts = 5;
+            HttpResponseMessage responseMessage = null;
+            while (attempts > 0 || responseMessage == null)
+            {
+                try
+                {
+                    responseMessage = await CallServer();
+                    break;
+                }
+                catch
+                {
+                    attempts--;
+                    Console.WriteLine($"Failed to connect to server. Attempts remaining: {attempts}/5");
+                }
+            }
+            if (responseMessage is null)
+                throw new CannotConnectToServerException();
+
+            response = new Response(responseMessage);
             Cache.AddToCache(Address, response);
 
-            return new Response(response, ResponseOrigin.Server);
+            return response;
         }
 
         private Task<HttpResponseMessage> CallServer()

@@ -21,6 +21,8 @@ namespace CachingProxy
             Socket.Receive(receivedBytes);
 
             string strContent = Encoding.Default.GetString(receivedBytes);
+            if (!strContent.Contains("HTTP"))
+                return null;
 
             RequesterContent content = new RequesterContent(strContent);
 
@@ -31,19 +33,16 @@ namespace CachingProxy
         public async Task<string> Send(Response response)
         {
             if (!Socket.Connected)
-                return string.Empty;
+                return null;
 
-            var data = await response.Message.Content.ReadAsByteArrayAsync();
+            var headers = response.Headers.ToString(Content.HttpVersion);
 
-            string header = $"{Content.HttpVersion} 200 OK \r\n";
-            header += $"X-Cache: {(response.Origin == ResponseOrigin.Cache? "HIT" : "MISS")} \r\n";
-            header += $"Content-Type: {response.Message.Content.Headers.ContentType.MediaType} \r\n";
-            header += $"Content-Length: {data.Count()} \r\n\r\n";
-
-            Socket.Send(Encoding.Default.GetBytes(header));
-            Socket.Send(data);
-
-            return header;
+            Socket.Send(Encoding.Default.GetBytes(headers));
+            if(response.Data.Length > 0)
+                Socket.Send(response.Data);
+            Socket.Shutdown(SocketShutdown.Both);
+            Socket.Close();
+            return headers;
         }
     }
 }

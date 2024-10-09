@@ -7,14 +7,14 @@ namespace CachingProxy
         private static MemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
 
 
-        public static void AddToCache(string address, HttpResponseMessage response)
+        public static void AddToCache(string address, Response response)
         {
             _cache.Set(address, response);
         }
 
-        public static HttpResponseMessage GetFromCache(string address)
+        public static Response GetFromCache(string address)
         {
-            if (_cache.TryGetValue(address, out HttpResponseMessage? result))
+            if (_cache.TryGetValue(address, out Response? result))
                 return result;
 
             return null;
